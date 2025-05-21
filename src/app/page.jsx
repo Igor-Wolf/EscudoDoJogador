@@ -13,6 +13,7 @@ import {
   RightContainer,
   TabsContainer,
   TitleText,
+  WrapperAudio,
 } from "./styles";
 import { Card } from "./Components/Card";
 import { InputUser } from "./Components/InputUser";
@@ -24,6 +25,15 @@ import { Chat } from "./Components/Chat";
 import { InputRoll } from "./Components/InputRoll";
 import { audioTheme } from "./utils/chatReqAudioTheme";
 import PlayAudio from "./Components/PlayAudio";
+import { api } from "./Services/api";
+import PlayAudioVoice from "./Components/PlayAudioVoice";
+
+import dynamic from "next/dynamic";
+
+const Recorder = dynamic(() => import("./Components/Recorder"), {
+  ssr: false, // impede que o pacote seja carregado no lado do servidor
+});
+
 
 export default function Home() {
   const [dataChat, setDataChat] = useState([]);
@@ -34,7 +44,21 @@ export default function Home() {
 
   const [containerIds, setContainerIds] = useState([]);
 
-  const [currentAudioTheme, setCurrentAudioTheme] = useState("")
+  const [currentAudioTheme, setCurrentAudioTheme] = useState("");
+
+  const [voiceAudio, setVoiceAudio] = useState("");
+
+  const [checkedAudio, setCheckedAudio] = useState(true);
+  const [checkedVoice, setCheckedVoice] = useState(true);
+
+  // Função chamada sempre que o valor da checkbox muda
+  const handleCheckboxChange = (key, event) => {
+    if (key === 1) {
+      setCheckedAudio(event.target.checked);
+    } else if (key === 2) {
+      setCheckedVoice(event.target.checked);
+    }
+  };
 
   const adicionarContainer = (value) => {
     const novoId = value;
@@ -54,7 +78,7 @@ export default function Home() {
     // Adicionando um espaço reservado para a resposta do assistente
     lista.push({
       role: "assistant",
-      content: "",
+      content: "...",
     });
 
     // Atualizando o estado com a nova lista de mensagens
@@ -120,11 +144,10 @@ export default function Home() {
 
         const match = accumulatedResponse.match(/"content"\s*:\s*"([^}]*)/);
         //const match = accumulatedResponse.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)/);
-        
 
         if (match && match[1]) {
-          const partialContent = match[1]; // conteúdo até agora
-          lista[lista.length - 1].content = partialContent;
+          let partialContent = match[1]; // conteúdo até agora
+          lista[lista.length - 1].content = partialContent.replace(/\\"/g, "");
         }
 
         // Atualizando o estado com a lista de mensagens (re-renderiza a UI)
@@ -137,8 +160,26 @@ export default function Home() {
     } catch (error) {
       //console.error("Erro ao fazer a requisição:", error.message);
     }
-    const audio = await audioTheme(dataChat, currentAudioTheme)
-    setCurrentAudioTheme(audio)
+
+    if (checkedAudio) {
+      const audio = await audioTheme(dataChat, currentAudioTheme);
+      setCurrentAudioTheme(audio);
+    }
+
+    //----------------------------------------------------------------------------------------------------- voice audio
+    if (checkedVoice) {
+      const formData = new FormData();
+      await formData.append("text", lista[lista.length - 1].content);
+      formData.append("language", "pt");
+      try {
+        const response = await api.post("/create-audio", formData, {
+          responseType: "blob", // importante se a resposta for um áudio
+        });
+        setVoiceAudio(response.data);
+      } catch (error) {
+        console.error("Erro ao gerar áudio:", error);
+      }
+    }
   };
 
   const handleClickButtonErase = () => {
@@ -262,10 +303,11 @@ export default function Home() {
         </Container1>
 
         <InputUser onButtonClick={handleClickButton}></InputUser>
+          <Recorder onButtonClick={handleClickButton}></Recorder>
       </Container>
 
       <Container variant={tabs} name="Ficha">
-      <TitleText>Ficha</TitleText>
+        <TitleText>Ficha</TitleText>
         <PdfViwer></PdfViwer>
       </Container>
 
@@ -277,8 +319,8 @@ export default function Home() {
           </Container>
         ) : (
           <Container key={item.id} variant={tabs} name={item.id}>
-              <TitleText>{ item.id }</TitleText>
-              <Chat></Chat>
+            <TitleText>{item.id}</TitleText>
+            <Chat></Chat>
           </Container>
         )
       )}
@@ -306,8 +348,30 @@ export default function Home() {
             onClick={() => handleClickButtonImport()}
           ></Button>
         </ButtonsContainer>
-        <PlayAudio audio={currentAudioTheme}></PlayAudio>
-        
+        <WrapperAudio>
+          <PlayAudio audio={currentAudioTheme}></PlayAudio>
+
+          <label>
+            <input
+              type="checkbox"
+              checked={checkedAudio}
+              onChange={(e) => handleCheckboxChange(1, e)}
+            />{" "}
+            Marcar
+          </label>
+        </WrapperAudio>
+        <WrapperAudio>
+          <PlayAudioVoice audio={voiceAudio}></PlayAudioVoice>
+          <label>
+            <input
+              type="checkbox"
+              checked={checkedVoice}
+              onChange={(e) => handleCheckboxChange(2, e)}
+            />{" "}
+            Marcar
+          </label>
+        </WrapperAudio>
+
         <InputRoll></InputRoll>
       </RightContainer>
     </ExternalContainer>

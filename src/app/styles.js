@@ -116,5 +116,18 @@ export const TitleText = styled.div`
 `
 
 
+export const WrapperAudio = styled.div`
+
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: white;
+    padding-left: 1rem;
+    padding-bottom: 1rem;
+
+
+`
+
+
 
 
