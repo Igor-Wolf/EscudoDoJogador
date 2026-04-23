@@ -107,7 +107,11 @@ export default function Home() {
 
     try {
       // Usando fetch para streaming de dados
-      const response = await fetch("http://localhost:3333/api/chat", {
+      // aqui é para processamento no backend const response = await fetch("http://localhost:3333/api/chat", {
+      const response = await fetch("http://localhost:11434/api/chat", { // aqui ligar direto na api ollama
+
+
+        
         method: "POST",
         headers: {
           "Content-Type": "application/json",
